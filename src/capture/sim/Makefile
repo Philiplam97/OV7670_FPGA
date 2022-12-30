@@ -9,7 +9,8 @@ MODULE := test_capture
 #VHDL top level name
 TOPLEVEL := capture
 
-VHDL_SOURCES = $(PRJ_DIR)/src/capture/capture.vhd
+VHDL_SOURCES = $(PRJ_DIR)/src/common/OV7670_util_pkg.vhd
+VHDL_SOURCES += $(PRJ_DIR)/src/capture/capture.vhd
 
 # Dump waves
 SIM_ARGS +=--wave=waves.ghw

@@ -14,6 +14,8 @@ library IEEE;
 use IEEE.std_logic_1164.all;
 use IEEE.numeric_std.all;
 
+use work.OV7670_util_pkg.ceil_log2;
+
 entity SCCB is
   generic (
     G_CLK_FREQ : natural := 100e6  -- Clock frequency of input clock, in Hz
@@ -34,15 +36,6 @@ entity SCCB is
 end entity;
 
 architecture rtl of SCCB is
-
-  function ceil_log2(num : natural) return natural is
-  begin
-    for i in 0 to 127 loop
-      if num <= 2**i then
-        return i;
-      end if;
-    end loop;
-  end function;
 
   -- For writes, the eighth bit in the ID address transmission should be set to
   -- '0'.

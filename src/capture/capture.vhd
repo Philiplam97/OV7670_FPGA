@@ -13,6 +13,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
+use work.OV7670_util_pkg.ceil_log2;
+
 entity capture is
   generic (
     G_BIT_DEPTH_R  : natural := 5;
@@ -41,15 +43,6 @@ entity capture is
 end entity capture;
 
 architecture rtl of capture is
-  --TODO add to common package
-  function ceil_log2(num : natural) return natural is
-  begin
-    for i in 0 to 31 loop
-      if num <= 2**i then
-        return i;
-      end if;
-    end loop;
-  end function;
 
   signal pxl_data : std_logic_vector(G_BIT_DEPTH_R + G_BIT_DEPTH_G + G_BIT_DEPTH_B - 1 downto 0) := (others => '0');
 
