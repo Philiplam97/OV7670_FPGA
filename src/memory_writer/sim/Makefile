@@ -22,4 +22,15 @@ SIM_ARGS +=--wave=waves.ghw
 EXTRA_ARGS += --std=08
 SIM_BUILD = sim_build
 
+
 include $(shell cocotb-config --makefiles)/Makefile.sim
+
+.PHONY: clean_ghdl
+
+#Delete all the files dumped by GHDL
+clean_ghdl : clean
+	rm -f *.exe
+	rm -f *.o
+	rm -f *.xml
+	rm -f *.ghw
+	
