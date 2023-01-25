@@ -105,6 +105,8 @@ architecture rtl of axi_writer is
 
   signal axi_bready    : std_logic;
   signal axi_write_err : std_logic;
+
+  signal fifo_rd_en : std_logic;
 begin
 
   -- Fixed burst length must be a power of two, to ensure that we do not cross
@@ -254,8 +256,22 @@ begin
   end process;
   axi_bready <= '1';
 
+  -- For debug only. If the logic is corrrect this will never happen
+  --synthesis translate_off
+  p_underflow_check : process(clk)
+  begin
+    if rising_edge(clk) then
+      if fifo_rd_en = '1' and i_fifo_empty = '1' then
+        assert false report "AXI writer underflowed burst FIFO" severity error;
+      end if;
+    end if;
+  end process;
+  --synthesis translate_on
+
+
   -- Burst Fifo outputs
-  o_fifo_rd_en       <= m_axi_wready and axi_wvalid;
+  fifo_rd_en         <= m_axi_wready and axi_wvalid;
+  o_fifo_rd_en       <= fifo_rd_en;
   o_rd_burst_reserve <= rd_burst_reserve_out;
 
   -- AXI outputs
