@@ -47,7 +47,7 @@ entity axi_writer is
     i_fifo_rd_data     : in  std_logic_vector(G_AXI_DATA_WIDTH - 1 downto 0);
     i_fifo_empty       : in  std_logic;  --for debug
     o_fifo_rd_en       : out std_logic;
-    i_rd_burst_avail   : out std_logic;
+    i_rd_burst_avail   : in  std_logic;
     i_rd_reserve_cnt   : in  unsigned(G_BURST_WRITE_FIFO_DEPTH_LOG2 downto 0);
     o_rd_burst_reserve : out std_logic;
 
