@@ -240,3 +240,20 @@ async def test_random(dut):
     tb.start()
     await tb.wait_clks(5000)
     await tb.end_sim()
+
+@cocotb.test()
+async def test_reset(dut):
+    """Test Reset"""
+    # Start drivers, wait a bit, stop drivers, issue a reset, start full test sequence.
+    tb = TB(dut)
+    tb.set_axi_backpressure(mode="random")
+    tb.init_signals()
+    await tb.reset()
+    tb.driver.start()
+    await tb.wait_clks(1000)
+    tb.driver.stop()
+    
+    await tb.reset()    
+    tb.start()
+    await tb.wait_clks(5000)
+    await tb.end_sim()
