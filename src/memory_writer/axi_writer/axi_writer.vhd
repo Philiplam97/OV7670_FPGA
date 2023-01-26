@@ -19,7 +19,7 @@
 --
 -- The flush input must be held high at the end to flush the FIFO. The last data
 -- in the burst FIFO will then be read out (since in most cases the remaining
--- amount will not be nough to till a full burst to then trigger of a new transfer)..
+-- amount will not be enough to till a full burst to then trigger of a new transfer)..
 --
 -------------------------------------------------------------------------------
 
@@ -153,7 +153,7 @@ begin
         --Sample address pointer on reset
         next_axi_awaddr <= i_base_pointer;
         assert (unsigned(i_base_pointer(11 downto 0)) = 0)
-          report "Base addres must be 4KB aligned!" severity failure;
+          report "Base address must be 4KB aligned!" severity failure;
         start_aw_trans <= '0';
         start_w_trans  <= '0';
         finished_flush <= '0';
