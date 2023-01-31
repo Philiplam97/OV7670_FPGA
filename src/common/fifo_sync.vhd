@@ -77,7 +77,7 @@ begin
   p_update_count_flags : process(clk)
   begin
     if rising_edge(clk) then
-      if wr_en = '1' and rd_en = '0' then               --write, no read
+      if wr_en = '1' and rd_en = '0' then     --write, no read
         count <= count + 1;
         empty <= '0';
         if count = 2**G_DEPTH_LOG2 - 2 then
@@ -86,10 +86,10 @@ begin
           almost_full <= '0';
         end if;
         full <= almost_full;
-      elsif rd_en = '1' and wr_en = '0' then            --read, no write
-        full  <= '0';
+      elsif rd_en = '1' and wr_en = '0' then  --read, no write
+        full        <= '0';
         almost_full <= full;
-        count <= count - 1;
+        count       <= count - 1;
         if count = 1 then
           empty <= '1';
         else
@@ -98,10 +98,10 @@ begin
       end if;  --otherwise read & write - no change in flags and counts
 
       if rst = '1' then
-        full  <= '0';
-        almost_full  <= '0';
-        empty <= '1';
-        count <= (others => '0');
+        full        <= '0';
+        almost_full <= '0';
+        empty       <= '1';
+        count       <= (others => '0');
       end if;
     end if;
   end process;
@@ -137,8 +137,10 @@ begin
 
   fwft_rd_en <= not empty and (fwft_empty or i_rd_en);
 
-  o_rd_data <= rd_data;
-  o_full    <= full;
-  o_empty   <= fwft_empty;
+  o_rd_data     <= rd_data;
+  o_full        <= full;
+  o_almost_full <= almost_full;
+  o_empty       <= fwft_empty;
+
 end;
 
