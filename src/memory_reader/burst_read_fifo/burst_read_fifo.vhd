@@ -15,7 +15,8 @@
 -- Burst ready will be deasserted when all the space in the fifo has been
 -- reserved/used and no more bursts can be received.
 -- It is assumed that the correct number of writes will come in after the space
--- is reserved for a burst - if this is not true the burst ready output will not be correct!
+-- is reserved for a burst - if this is not true the burst ready output will not
+-- be correct!
 -- 
 -- Output data width must be smaller than or equal to input width. If smaller than,
 -- the data undergoes downsizing on the output side after the fifo
@@ -43,8 +44,7 @@ entity burst_read_fifo is
 
     -- Reserve interface for the write side
     i_wr_burst_reserve : in  std_logic;
-    o_wr_burst_avail   : out std_logic;  -- We have at least G_BURST_LENGTH free
-    -- and not reserved in the FIFO
+    o_wr_burst_avail   : out std_logic;  -- We have at least G_BURST_LENGTH free and not reserved in the FIFO
 
     -- Write interface
     i_wr_en   : in std_logic;
@@ -102,55 +102,60 @@ begin
     end if;
   end process;
 
+  -- The width conversion is done by writing the fifo data to a register, and
+  -- muxing the data out based on a counter. This uses less logic then a shift
+  -- register based approach, as the parallel loading will result in luts used
+  -- for muxes before each register.
   gen_width_conv : if G_IN_DATA_WIDTH /= G_OUT_DATA_WIDTH generate
-    constant C_DOWNSIZE_FACTOR : natural                                             := G_IN_DATA_WIDTH/G_OUT_DATA_WIDTH;
-    signal downsize_cnt        : unsigned(ceil_log2(C_DOWNSIZE_FACTOR) - 1 downto 0) := (others => '0');
-    signal output_sreg         : std_logic_vector(G_IN_DATA_WIDTH - 1 downto 0)      := (others => '0');
+    constant C_DOWNSIZE_FACTOR : natural                                                           := G_IN_DATA_WIDTH/G_OUT_DATA_WIDTH;
+    signal downsize_cnt        : unsigned(ceil_log2(C_DOWNSIZE_FACTOR) - 1 downto 0)               := (others => '0');
+    signal output_reg          : std_logic_vector(G_IN_DATA_WIDTH - G_OUT_DATA_WIDTH - 1 downto 0) := (others => '0');
+    signal data_out            : std_logic_vector(G_OUT_DATA_WIDTH - 1 downto 0)                   := (others => '0');
   begin
 
-    -- Use a shift register and a counter to output the fifo data in the smaller
-    -- data width.
     process(clk) is
     begin
       if rising_edge(clk) then
 
         if fifo_empty = '0' and empty_out = '1' then
           --Output is empty but fifo has data
-          fifo_rd_en  <= '1';
-          empty_out   <= '0';
-          output_sreg <= fifo_rd_data;
+          fifo_rd_en <= '1';
+          empty_out  <= '0';
+          output_reg <= fifo_rd_data(fifo_rd_data'high downto G_OUT_DATA_WIDTH);
+          data_out   <= fifo_rd_data(G_OUT_DATA_WIDTH - 1 downto 0);
         elsif i_rd_en = '1' and empty_out = '0' then
           if downsize_cnt = C_DOWNSIZE_FACTOR - 1 then
             -- We have output all data in the shift register, read the fifo
             -- again if it is not empty to fill the output register
             downsize_cnt <= (others => '0');
             if fifo_empty = '0' then
-              fifo_rd_en  <= '1';
-              output_sreg <= fifo_rd_data;
-              empty_out   <= '0';
+              fifo_rd_en <= '1';
+              output_reg <= fifo_rd_data(fifo_rd_data'high downto G_OUT_DATA_WIDTH);
+              data_out   <= fifo_rd_data(G_OUT_DATA_WIDTH - 1 downto 0);
+              empty_out  <= '0';
             else                        --fifo is empty
               fifo_rd_en <= '0';
               empty_out  <= '1';
             end if;
           else
-            -- Right shift the output shift register by the output data width
             fifo_rd_en   <= '0';
             downsize_cnt <= downsize_cnt + 1;
-            output_sreg  <= (G_OUT_DATA_WIDTH - 1 downto 0 => '0') & output_sreg(output_sreg'high downto G_OUT_DATA_WIDTH);
+            --mux the output data
+            data_out     <= output_reg(G_OUT_DATA_WIDTH * (to_integer(downsize_cnt) + 1) - 1 downto G_OUT_DATA_WIDTH * to_integer(downsize_cnt));
           end if;
         else
           fifo_rd_en <= '0';
         end if;
 
         if rst = '1' then
-          downsize_cnt <= (others=> '0');
-          fifo_rd_en <= '0';
-          empty_out <= '1';
+          downsize_cnt <= (others => '0');
+          fifo_rd_en   <= '0';
+          empty_out    <= '1';
         end if;
       end if;
     end process;
 
-    o_rd_data <= output_sreg(G_OUT_DATA_WIDTH - 1 downto 0);
+    o_rd_data <= data_out;
     o_empty   <= empty_out;
   end generate;
 
