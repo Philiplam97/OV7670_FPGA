@@ -184,7 +184,7 @@ class TB:
         self.input_data = self.rng.integers(
             0, 2 ** self.data_out_width, size=self.test_data_length
         ).tolist()
-        self.input_data =  np.arange(self.test_data_length).tolist()
+        # self.input_data =  np.arange(self.test_data_length).tolist()
 
         self.mem.write_words(
             self.base_address, self.input_data, byteorder="little", ws=self.data_out_width // 8
@@ -252,19 +252,19 @@ async def test_random(dut):
     tb.end_sim()
 
 
-# @cocotb.test()
-# async def test_reset(dut):
-#     """Test Reset"""
-#     # Start drivers, wait a bit, stop drivers, issue a reset, start full test sequence.
-#     tb = TB(dut)
-#     tb.set_axi_backpressure(mode="random")
-#     tb.init_signals()
-#     await tb.reset()
-#     tb.driver.start()
-#     await tb.wait_clks(1000)
-#     tb.driver.stop()
+@cocotb.test()
+async def test_reset(dut):
+    """Test Reset"""
+    # Start drivers, wait a bit, stop drivers, issue a reset, start full test sequence.
+    tb = TB(dut)
+    tb.set_axi_backpressure(mode="random")
+    tb.init_signals()
+    await tb.reset()
+    tb.driver.start()
+    await tb.wait_clks(1000)
+    tb.driver.stop()
 
-#     await tb.reset()
-#     tb.start()
-#     await tb.wait_clks(5000)
-#     await tb.end_sim()
+    await tb.reset()
+    tb.start()
+    await tb.wait_clks(5000)
+    tb.end_sim()
