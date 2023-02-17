@@ -73,34 +73,6 @@ architecture rtl of SCCB is
   signal tx_done : std_logic := '0';
 begin
 
-  -- p_sample_input : process(clk)
-  -- begin
-  --   if rising_edge(clk) then
-  --     if i_vld = '1' and ready_out = '1' then
-  --       -- Sample the data, put onto shift register
-  --       tx_data   <= C_START_COND_TX & i_id & C_WRITE_BIT_SEL & '0' & i_subaddr & '0' & i_data & '0' & C_STOP_COND_TX;
-  --       ready_out <= '0';
-  --     end if;
-
-  --     if tx_done = '1' then
-  --       ready_out <= '0';
-  --     end if;
-
-  --     --assert ready coming out of reset, but ensure it is low during reset to
-  --     --allow this module to get  reset independently (even when the
-  --     --interfacing module is not reset)
-  --     if rst_d = '1' and rst = '0' then
-  --       ready_out <= '1';
-  --     end if;
-
-  --     rst_d <= rst;
-  --     if rst = '1' then
-  --       ready_out <= '0';
-  --     end if;
-  --   end if;
-
-  -- end process;
-
   -- Main state machine for transmit. Perform 3 phase transmission cycle -
   -- refer to 3.2.1.1 of OmniVision Serial Camera Control Bus (SCCB) Function
   -- Specification
@@ -196,13 +168,13 @@ begin
           when STOP_1 =>
             SIO_C      <= '1';
             SIO_D      <= tx_sreg(tx_sreg'left);             --'0'
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
+            tx_sreg    <= tx_sreg(tx_sreg'left - 1 downto 0) & '0';
             SCCB_state <= STOP_2;
             drive_z    <= '0';
           when STOP_2 =>
             SIO_C      <= '1';
             SIO_D      <= tx_sreg(tx_sreg'left);             --'1'
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
+            tx_sreg    <= tx_sreg(tx_sreg'left - 1 downto 0) & '0';
             SCCB_state <= STOP_3;
             drive_z    <= '0';
           when STOP_3 =>
