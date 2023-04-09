@@ -52,7 +52,9 @@ entity memory_writer is
     m_axi_bid    : in  std_logic_vector(G_AXI_ID_WIDTH - 1 downto 0);
     m_axi_bresp  : in  std_logic_vector(1 downto 0);
     m_axi_bvalid : in  std_logic;
-    m_axi_bready : out std_logic
+    m_axi_bready : out std_logic;
+
+    o_err        : out std_logic
     );
 end entity;
 
@@ -136,6 +138,18 @@ begin
       o_full             => fifo_full,
       o_almost_full      => fifo_almost_full,
       o_empty            => fifo_empty);
+
+  -- Overflow error - single cycle
+  p_overflow_err : process(clk)
+  begin
+    if rising_edge(clk) then
+      if fifo_full = '1' and fifo_wr_en = '1' then
+        o_err <= '1';
+      else
+        o_err <= '0';
+      end if;
+    end if;
+  end process;
 
   -- Since we need to register the write enable above due to the need for
   -- flushing, the worst case in back to back writes is that we can no longer
