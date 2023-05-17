@@ -210,7 +210,7 @@ begin
   process(clk)
   begin
     if rising_edge(clk) then
-      if strb_counter = to_unsigned(C_STRB_CNTR_THRESHOLD-1, strb_counter) then
+      if strb_counter = C_STRB_CNTR_THRESHOLD-1 then
         strb_counter <= (others => '0');
         strb         <= '1';
       else
