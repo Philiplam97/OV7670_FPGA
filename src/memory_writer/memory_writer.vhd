@@ -160,6 +160,7 @@ begin
     generic map (
       G_AXI_DATA_WIDTH              => G_AXI_DATA_WIDTH,
       G_AXI_ADDR_WIDTH              => G_AXI_ADDR_WIDTH,
+      G_AXI_ID_WIDTH                => G_AXI_ID_WIDTH,
       G_BURST_WRITE_FIFO_DEPTH_LOG2 => G_FIFO_DEPTH_LOG2,
       G_BURST_LENGTH                => G_BURST_LENGTH)
     port map (
