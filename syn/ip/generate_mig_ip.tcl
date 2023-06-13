@@ -4,7 +4,7 @@
 # This script will create the mig xci based on the configurations provided in the
 # mig.prj file and then synthesise and generate the output products.
 create_project -in_memory -part XC7A35TICSG324-1L
-create_ip -name mig_7series -vendor xilinx.com -library ip -module_name mig_7series_0
+create_ip -name mig_7series -vendor xilinx.com -library ip -module_name mig_7series_0 -dir ./
 set_property CONFIG.XML_INPUT_FILE [file normalize ./mig_a.prj] [get_ips mig_7series_0]
 generate_target all [get_ips]
 synth_ip [get_ips]
