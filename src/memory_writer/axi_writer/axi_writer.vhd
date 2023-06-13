@@ -254,6 +254,7 @@ begin
       end if;
     end if;
   end process;
+  
   axi_bready <= '1';
 
   -- For debug only. If the logic is corrrect this will never happen
@@ -288,4 +289,6 @@ begin
   m_axi_wlast   <= axi_wlast;
   --
   m_axi_bready  <= axi_bready;
+
+  o_axi_write_err <= axi_write_err;
 end;
