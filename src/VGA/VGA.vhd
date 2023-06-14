@@ -159,6 +159,13 @@ begin
           vblank <= '1';
         end if;
       end if;
+
+      if rst = '1' then
+        sav    <= '0';
+        eav    <= '0';
+        sof    <= '0';
+        vblank <= '1';
+      end if;
     end if;
   end process;
 
