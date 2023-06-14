@@ -51,7 +51,8 @@ entity VGA is
     o_eav    : out std_logic;           -- End of active video line
     o_vblank : out std_logic            -- Vertical blanking
     );
-end;
+end entity;
+
 architecture rtl of VGA is
 
   constant C_LINE_WIDTH    : natural := G_FRAME_WIDTH + G_H_FP + G_H_PULSE + G_H_BP;  --width in pixels of each line, 800 for 640*480 60 Hz VGA
@@ -105,6 +106,7 @@ begin
       if rst = '1' then
         h_cnt <= (others => '0');
         v_cnt <= (others => '0');
+        v_sync <= not G_SYNC_POL;
       end if;
     end if;
   end process;
@@ -119,6 +121,9 @@ begin
         else
           h_sync <= not G_SYNC_POL;
         end if;
+      end if;
+      if rst = '1' then
+        h_sync <= not G_SYNC_POL;
       end if;
     end if;
   end process;
