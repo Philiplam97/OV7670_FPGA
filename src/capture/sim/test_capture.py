@@ -124,6 +124,23 @@ class Ov7670Bus:
                 0, 2 ** self.bit_depth_b, size=(self.frame_height, self.frame_width)
             )
             frame_data = np.stack((frame_data_r, frame_data_g, frame_data_b), axis=-1)
+        elif pattern == "sequential":
+            frame_data_r = np.arange(
+                0, self.frame_height * self.frame_width - 1, dtype=np.int32
+            ).reshape(self.frame_height, self.frame_width)
+            frame_data_r = np.mod(frame_data_r, 2 ** self.bit_depth_r)
+
+            frame_data_g = np.arange(
+                0, self.frame_height * self.frame_width - 1, dtype=np.int32
+            ).reshape(self.frame_height, self.frame_width)
+            frame_data_g = np.mod(frame_data_g, 2 ** self.bit_depth_g)
+
+            frame_data_b = np.arange(
+                0, self.frame_height * self.frame_width - 1, dtype=np.int32
+            ).reshape(self.frame_height, self.frame_width)
+            frame_data_b = np.mod(frame_data_b, 2 ** self.bit_depth_b)
+
+            frame_data = np.stack((frame_data_r, frame_data_g, frame_data_b), axis=-1)
         else:
             assert False, "ERROR: {} pattern not implemented!".format(pattern)
 
@@ -256,7 +273,9 @@ class TB:
         )
 
         # start the clock
-        cocotb.start_soon(Clock(self.dut.pclk, self.clk_period, units=self.clk_units).start())
+        cocotb.start_soon(
+            Clock(self.dut.pclk, self.clk_period, units=self.clk_units).start()
+        )
 
     async def reset(self, n_clks=5):
         self.log.info("reset")
