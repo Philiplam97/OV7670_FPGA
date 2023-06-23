@@ -1,7 +1,7 @@
 TOPLEVEL_LANG ?= vhdl
 SIM ?= ghdl
 
-PRJ_DIR = $(shell pwd)/../../../
+PRJ_DIR = $(shell pwd)/../../../../
 
 #Python test file
 MODULE := test_SCCB
@@ -10,7 +10,7 @@ MODULE := test_SCCB
 TOPLEVEL := sccb
 
 VHDL_SOURCES = $(PRJ_DIR)/src/common/OV7670_util_pkg.vhd
-VHDL_SOURCES += $(PRJ_DIR)/src/SCCB/SCCB.vhd
+VHDL_SOURCES += $(PRJ_DIR)/src/OV7670_wrapper/SCCB/SCCB.vhd
 
 # Dump waves
 SIM_ARGS +=--wave=waves.ghw
