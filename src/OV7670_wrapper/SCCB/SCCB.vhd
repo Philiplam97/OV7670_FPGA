@@ -43,25 +43,26 @@ architecture rtl of SCCB is
   -- Bits to send for start condition
   constant C_START_COND_TX  : std_logic_vector := "100";
   -- Bits to send for stop
-  constant C_STOP_COND_TX   : std_logic_vector := "0011";
+  constant C_STOP_COND_TX   : std_logic_vector := "001";
   -- Frequency of the transfer clock (F_SIOC_C in the datasheet)
-  constant C_SIO_C_FREQ     : natural          := 400e3;  --400 kHz
+  constant C_SIO_C_FREQ     : natural          := 100e3;  --100 kHz
   -- Number of bits for each phase
   constant C_PHASE_NUM_BITS : natural          := 9;  --8 data bits and one don't care
 
   -- 4 times for one period
   constant C_STRB_CNTR_THRESHOLD : natural := G_CLK_FREQ / C_SIO_C_FREQ / 2 / 2;
 
-  type t_SCCB_state is (IDLE, START_0, START_1, SEND_0, SEND_1, SEND_2, SEND_3, STOP_0, STOP_1, STOP_2, STOP_3, STOP_4);  --TODO
+  type t_SCCB_state is (IDLE, START_0, START_1, START_2, SEND_0, SEND_1, SEND_2, SEND_3, STOP_0, STOP_1, STOP_2, STOP_3);  --TODO
   signal SCCB_state : t_SCCB_state := IDLE;
 
   -- 3 phase transmission - 3x9 bits of data,  see below
   signal tx_sreg : std_logic_vector(C_START_COND_TX'length + 3*C_PHASE_NUM_BITS + C_STOP_COND_TX'length - 1 downto 0) := (others => '0');
 
-  signal tx_cnt : unsigned(ceil_log2(tx_sreg'length) - 1 downto 0) := (others => '0');
+  signal tx_cnt    : unsigned(ceil_log2(tx_sreg'length) - 1 downto 0) := (others => '0');
+  signal state_cnt : unsigned(1 downto 0);
 
   signal ready_out : std_logic := '0';
-  signal SIO_C     : std_logic := '0';
+  signal SIO_C     : std_logic := '1';
   signal SIO_D     : std_logic := '0';
 
   signal rst_d : std_logic := '0';
@@ -95,6 +96,8 @@ begin
         ready_out <= '1';
       end if;
 
+      rst_d <= rst;
+
       --assert ready coming out of reset, but ensure it is low during reset to
       --allow this module to get  reset independently (even when the
       --interfacing module is not reset)
@@ -102,37 +105,56 @@ begin
         ready_out <= '1';
       end if;
 
-      rst_d <= rst;
-
       if strb = '1' then
         case SCCB_state is
           when IDLE =>
-            SIO_C <= '1';
-            -- Ready out is essentially not empty, i.e. we have daa waaiting to
+            SIO_C   <= '1';
+            drive_z <= '1';
+
+            --Some states we need to stay multiple clocks. Use this cnt to control
+            state_cnt <= (others => '0');
+
+            -- Ready out is essentially not empty, i.e. we have data waiting to
             -- be sent.
             if ready_out = '0' then
               SIO_D      <= tx_sreg(tx_sreg'left);  -- '1'
-              tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
+              tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
               drive_z    <= '0';
               SCCB_state <= START_0;
             end if;
           when START_0 =>
-            SIO_C      <= '1';
-            SIO_D      <= tx_sreg(tx_sreg'left);    --'0'
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
-            SCCB_state <= START_1;
-            drive_z    <= '0';
+            state_cnt <= state_cnt + 1;
+            if state_cnt = 3 then
+              SIO_C      <= '1';
+              tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
+              SIO_D      <= tx_sreg(tx_sreg'left);  --'0'
+              SCCB_state <= START_1;
+              state_cnt  <= (others => '0');
+            end if;
+            drive_z <= '0';
           when START_1 =>
-            SIO_C      <= '0';
-            SIO_D      <= tx_sreg(tx_sreg'left);    --'0'
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
-            SCCB_state <= SEND_0;
-            drive_z    <= '0';
+            state_cnt <= state_cnt + 1;
+            if state_cnt = 3 then
+              SIO_C      <= '0';
+              tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
+              SIO_D      <= tx_sreg(tx_sreg'left);  --'0'
+              SCCB_state <= START_2;
+              state_cnt  <= (others => '0');
+            end if;
+            drive_z <= '0';
+          when START_2 =>
+            state_cnt <= state_cnt + 1;
+            if state_cnt = 2 then
+              SIO_C      <= '0';
+              SCCB_state <= SEND_0;
+              state_cnt  <= (others => '0');
+            end if;
+            drive_z <= '0';
           when SEND_0 =>
             SIO_C      <= '0';
             SCCB_state <= SEND_1;
             SIO_D      <= tx_sreg(tx_sreg'left);    --data bit
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
+            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
             tx_cnt     <= tx_cnt + 1;
             if tx_cnt = to_unsigned(8, tx_cnt'length)
               or tx_cnt = to_unsigned(17, tx_cnt'length)
@@ -144,12 +166,9 @@ begin
           when SEND_1 =>
             SIO_C      <= '1';
             SCCB_state <= SEND_2;
-            drive_z    <= '0';
-
           when SEND_2 =>
             SIO_C      <= '1';
             SCCB_state <= SEND_3;
-            drive_z    <= '0';
           when SEND_3 =>
             SIO_C <= '0';
             if tx_cnt = to_unsigned(27, tx_cnt'length) then  --done sending data
@@ -158,42 +177,42 @@ begin
             else
               SCCB_state <= SEND_0;
             end if;
-            drive_z <= '0';
           when STOP_0 =>
             SIO_C      <= '0';
-            SIO_D      <= tx_sreg(tx_sreg'left);             --'0'
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
+            SIO_D      <= tx_sreg(tx_sreg'left);          
+            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
             SCCB_state <= STOP_1;
             drive_z    <= '0';
           when STOP_1 =>
             SIO_C      <= '1';
-            SIO_D      <= tx_sreg(tx_sreg'left);             --'0'
-            tx_sreg    <= tx_sreg(tx_sreg'left - 1 downto 0) & '0';
+            drive_z    <= '0';
+            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
+            SIO_D      <= tx_sreg(tx_sreg'left);  
             SCCB_state <= STOP_2;
-            drive_z    <= '0';
           when STOP_2 =>
-            SIO_C      <= '1';
-            SIO_D      <= tx_sreg(tx_sreg'left);             --'1'
-            tx_sreg    <= tx_sreg(tx_sreg'left - 1 downto 0) & '0';
-            SCCB_state <= STOP_3;
-            drive_z    <= '0';
+            state_cnt <= state_cnt + 1;
+            if state_cnt = 1 then
+              SIO_C      <= '1';
+              drive_z    <= '0';
+              tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '1';
+              SIO_D      <= tx_sreg(tx_sreg'left);  
+              SCCB_state <= STOP_3;
+              state_cnt  <= (others => '0');
+            end if;
           when STOP_3 =>
-            SIO_C      <= '1';
-            SIO_D      <= tx_sreg(tx_sreg'left);             --'1'
-            tx_sreg    <= tx_sreg(tx_sreg'left -1 downto 0) & '0';
-            SCCB_state <= STOP_4;
-            drive_z    <= '0';
-          when STOP_4 =>
-            SIO_C      <= '1';
-            SIO_D      <= tx_sreg(tx_sreg'left);             --'0'
-            tx_done    <= '1';
-            drive_z    <= '1';
-            SCCB_state <= IDLE;
+            state_cnt <= state_cnt + 1;
+            if state_cnt = 3 then
+              SIO_C      <= '1';
+              drive_z    <= '1';
+              SCCB_state <= IDLE;
+              state_cnt  <= (others => '0');
+              tx_done    <= '1';
+            end if;
         end case;
       end if;
 
       if rst = '1' then
-        SIO_C      <= '0';
+        SIO_C      <= '1';
         SCCB_state <= IDLE;
         tx_cnt     <= (others => '0');
         drive_z    <= '1';
@@ -205,7 +224,7 @@ begin
   end process;
 
   -- Generate the strobe used as a clock enable for the state/output changes
-  -- The period of sio_c is 2.5 micro seconds (at 400 KHz). We need this to pulse
+  -- The period of sio_c is 10 micro seconds (at 100 KHz). We need this to pulse
   -- 4 times per period.
   process(clk)
   begin

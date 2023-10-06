@@ -26,7 +26,7 @@ entity OV7670_wrapper is
     );
   port (
     pclk : in std_logic;  --pixel clock                                                 
-    prst  : in std_logic;
+    prst : in std_logic;
 
     SCCB_clk : in std_logic;
     SCCB_rst : in std_logic;
@@ -53,16 +53,20 @@ entity OV7670_wrapper is
 end entity OV7670_wrapper;
 
 architecture rtl of OV7670_wrapper is
-  type t_config_state is (IDLE, CONFIG);
-  signal config_state : t_config_state := IDLE;
+  type t_config_state is (IDLE, RESET, CONFIG);
+  signal config_state : t_config_state               := IDLE;
   signal sccb_addr    : unsigned(7 downto 0);
   signal sccb_vld     : std_logic;
   signal sccb_rdy     : std_logic;
-  signal sccb_id      : std_logic_vector(6 downto 0);
+  signal sccb_id      : std_logic_vector(6 downto 0) := "0100001";  --0x21
   signal sccb_data    : std_logic_vector(7 downto 0);
-  signal sccb_subaddr : std_logic_vector(7 downto 0);
-  signal config_cnt   : unsigned(6 downto 0);  -- TODO
+  signal config_cnt   : unsigned(7 downto 0);                       -- TODO
 
+  signal sreg : std_logic_vector(15 downto 0);
+
+  --1ms counter
+  constant C_CNT_1MS_THRESHOLD : natural := G_CLK_FREQ / 1000 - 1;
+  signal cnt_1ms               : unsigned(ceil_log2(C_CNT_1MS_THRESHOLD + 1) - 1 downto 0);
 begin
 
   capture_1 : entity work.capture
@@ -85,6 +89,8 @@ begin
       o_sof     => o_sof,
       o_eos     => o_eos);
 
+  sccb_id <= "0100001";                 --0x21 OV7670 address
+
   SCCB_1 : entity work.SCCB
     generic map (
       G_CLK_FREQ => G_CLK_FREQ)
@@ -92,7 +98,7 @@ begin
       clk       => SCCB_clk,
       rst       => sccb_rst,
       i_data    => sccb_data,
-      i_subaddr => sccb_subaddr,
+      i_subaddr => std_logic_vector(sccb_addr),
       i_id      => sccb_id,
       i_vld     => sccb_vld,
       o_rdy     => sccb_rdy,
@@ -107,30 +113,38 @@ begin
     if rising_edge(SCCB_clk) then
       case config_state is
         when IDLE =>
-          sccb_addr  <= (others => '0');
           sccb_vld   <= '0';
           config_cnt <= (others => '0');
+          cnt_1ms    <= (others => '0');
           if i_start_config = '1' then
-            config_state <= CONFIG;
+            config_state <= RESET;
             sccb_vld     <= '1';
             sccb_addr    <= C_REGS_ADDR(COM7);
             sccb_data    <= x"80";      -- Issue reset
+          end if;
+        when RESET =>
+          if sccb_vld = '1' and sccb_rdy = '1' then
+            sccb_vld <= '0';
+          end if;
+          -- Wait 1ms from reset to writing the next registers
+          cnt_1ms <= cnt_1ms + 1;
+          if cnt_1ms = C_CNT_1MS_THRESHOLD then
+            sccb_vld  <= '1';
+            sccb_addr <= C_REGS_ADDR(COM7);
+            sccb_data <= x"04";
           end if;
         when CONFIG =>
           if sccb_vld = '1' and sccb_rdy = '1' then
             config_cnt <= config_cnt + 1;
             case to_integer(config_cnt) is
               when 0 =>
-                sccb_addr    <= C_REGS_ADDR(COM7);
-                sccb_data <= x"04";  --set to RGB and VGA resolution
+                sccb_addr <= C_REGS_ADDR(CLKRC);
+                sccb_data <= x"40"; 
               when 1 =>
-                sccb_addr    <= C_REGS_ADDR(CLKRC);
-                sccb_data <= x"40";  --Use external clock directly
+                sccb_addr <= C_REGS_ADDR(COM15);
+                sccb_data <= x"D0";     -- Full output range, RGB565
               when 2 =>
-                sccb_addr    <= C_REGS_ADDR(COM15);
-                sccb_data <= x"D0";  -- Full output range, RGB565
-              when 3 =>
-                sccb_addr    <= C_REGS_ADDR(COM13);
+                sccb_addr <= C_REGS_ADDR(COM13);
                 sccb_data <= x"C0";  -- UV saturation level - auto adjustment?
               when others =>
                 config_state <= IDLE;
@@ -139,10 +153,10 @@ begin
             end case;
           end if;
       end case;
-
       if SCCB_rst = '1' then
         config_state <= IDLE;
         sccb_vld     <= '0';
+        cnt_1ms      <= (others => '0');
       end if;
     end if;
   end process;
