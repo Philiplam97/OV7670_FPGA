@@ -1,0 +1,2 @@
+open_checkpoint OV7670_FPGA_build/top_route.dcp
+write_bitstream OV7670_FPGA_build/OV7670_FPGA.bit -force
