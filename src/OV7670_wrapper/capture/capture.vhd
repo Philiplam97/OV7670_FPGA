@@ -68,7 +68,7 @@ begin
         end if;
         second_byte <= not second_byte;
       end if;
-      if rst = '1' then
+      if rst = '1' or i_vsync = '1' then
         second_byte <= '0';
         pxl_vld     <= '0';
       end if;
